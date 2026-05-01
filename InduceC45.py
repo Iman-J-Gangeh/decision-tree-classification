@@ -6,7 +6,7 @@ import math
 class TreeNode: 
     def __init__(self, value, children=[]):
         self.value = value # holds the Attribute being considered
-        self.children = children # children are (label, Node)
+        self.children = children # children are (edge, Node)
                                  # label is the particular category of attribute
 
     def add_child(self, child):
@@ -34,7 +34,7 @@ def fit(x, y, A, threshold):
             xj = x[x[winner] == a]
             yj = y[xj.index]
             c = fit(xj, yj, A, threshold)
-            tree.append((a, c))
+            tree.add_child((a, c))
         return tree
 
 
@@ -51,8 +51,8 @@ def selectSplittingAttribute(x, y, A, threshold):
 # comnpute the information gain 
 def computeMetric(x, y):
     # calculate the overall entropy 
-    values = y.value_counts
-    n = sum(values)
+    values = y.value_counts()
+    n = values.sum()
     entropy = 0
     for val in values:
         p = val / n
@@ -60,13 +60,20 @@ def computeMetric(x, y):
     
     # calculate the individual information gains
     entropy_split = 0
-    xcounts = x.value_counts
+    xcounts = x.value_counts()
     # iterate over unique values
     for i in xcounts.index: 
-        w = val / xcounts[i]
+        # isolate each level in x with associated y
         x_vals = x[x == i]
         y_vals = y[x_vals.index]
-        entropy_split += -w * ()
+        w = x_vals.size / n
+        sub_entropy = 0
+        y_sub_values = y_vals.value_counts()
+        for j in y_sub_values.index:
+            p =  y_sub_values[j] / x_vals.size
+            sub_entropy +=  -(p) * math.log2(p)
+        entropy_split += w * sub_entropy
+    return entropy - entropy_split
 
 
 
