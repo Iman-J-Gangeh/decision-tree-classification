@@ -3,6 +3,9 @@ import pandas as pd
 import json
 from pprint import pprint
 
+from pandas.core.interchange.dataframe_protocol import DataFrame
+
+
 # func predeclarations
 
 def read_json(filename):
@@ -80,23 +83,24 @@ def follow_edge(edge, row):
     raise ValueError("Edge has neither 'node' nor 'leaf'")
 
 
-def parse_JSON_for_pred(data: list[dict], y_ground, json, eval=None):
+def parse_JSON_for_pred(data: DataFrame, y_ground, json, eval=None):
+    columns = data.keys()
+    data_dict = data.to_dict(orient="records") #: list[dict]
     predicted = []
 
-    for row in data:
+    for row in data_dict:
         y_pred = predict(json, row)
-        row["y_pred"] = y_pred
+        # row["y_pred"] = y_pred
 
-        if not eval:
-            print(row)
-            print("\n")
-        else:
-            predicted.append(row)
+        predicted.append(y_pred)
+
+    # predicted = pd.concat(data, pd.DataFrame(predicted, columns = ['y_pred']))
+    data['y_pred'] = pd.DataFrame(predicted, columns=['y_pred'])
 
     if not eval:
-        return
+        return predicted
     else:
-        cm = confusion_matrix_multiclass(y_ground, predicted)
+        cm = confusion_matrix_multiclass(y_ground, data['y_pred'])
         num_TP = 0
 
         for level in y_ground.unique():
@@ -118,14 +122,14 @@ def parse_JSON_for_pred(data: list[dict], y_ground, json, eval=None):
 test_set_path = sys.argv[1]
 tree_path = sys.argv[2]
 print("Reading JSON from " + tree_path)
-if (len(sys.argv) >= 4):
-    out_file = sys.argv[3]
-    print("Writing to " + out_file)
+if (len(sys.argv) > 3):
+    eval = sys.argv[3]
+else:
+    eval = None
 
 with open(tree_path, 'r') as tree_file:
     json_data = json.load(tree_file)
 test_set = pd.read_csv(test_set_path, skiprows=[1,2])
-# print(json_data.dumps(indent=4))
 
 if "iris" in test_set_path:
     ground_truth = test_set['species']
@@ -134,7 +138,7 @@ elif "nursery" in test_set_path:
 else:
     ground_truth = test_set['lettr']
 
-parsed_data = parse_JSON_for_pred(test_set.to_dict(orient="records"), ground_truth,  json_data)
+parsed_data = parse_JSON_for_pred(test_set, ground_truth,  json_data, eval)
 
 if (len(sys.argv) >= 3):
     pprint(parsed_data)
