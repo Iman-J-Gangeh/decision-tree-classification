@@ -135,8 +135,9 @@ if "iris" in test_set_path:
     ground_truth = test_set['species']
 elif "nursery" in test_set_path:
     ground_truth = test_set['class']
-else:
+elif "letter" in test_set_path:
     ground_truth = test_set['lettr']
+else: ground_truth = test_set['inflated']
 
 parsed_data = parse_JSON_for_pred(test_set, ground_truth,  json_data, eval)
 
