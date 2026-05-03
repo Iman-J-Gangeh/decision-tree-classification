@@ -1,6 +1,7 @@
 import sys
 import pandas as pd
 import json
+from pprint import pprint
 
 # func predeclarations
 
@@ -40,8 +41,8 @@ def class_counts_from_cm(cm, cls):
     return {"TP": TP, "FP": FP, "FN": FN, "TN": TN}
 
 
-def predict(tree, row):
-    return traverse_node(tree["node"], row)
+def predict(tree: dict, row):
+    return traverse_node(tree['node'], row)
 
 
 def traverse_node(node, row):
@@ -49,6 +50,7 @@ def traverse_node(node, row):
     row_value = row[var_name]
     edges = node["edges"]
 
+    # Numerical
     if any("op" in edge_wrapper["edge"] for edge_wrapper in edges):
         for edge_wrapper in edges:
             edge = edge_wrapper["edge"]
@@ -78,28 +80,25 @@ def follow_edge(edge, row):
     raise ValueError("Edge has neither 'node' nor 'leaf'")
 
 
-def parse_JSON_for_pred(data, y_ground, json, eval=None):
+def parse_JSON_for_pred(data: list[dict], y_ground, json, eval=None):
     predicted = []
 
-    if not eval:
-        print("attributes:" + data.keys())
-
-    for row in data.to_dict('records'):
-        y_pred = predict(row[:-1], json)
+    for row in data:
+        y_pred = predict(json, row)
         row["y_pred"] = y_pred
 
         if not eval:
-            for item in row:
-                print(item + " ")
-            print(predicted + "\n")
+            print(row)
+            print("\n")
         else:
             predicted.append(row)
 
     if not eval:
-        return 0
+        return
     else:
         cm = confusion_matrix_multiclass(y_ground, predicted)
         num_TP = 0
+
         for level in y_ground.unique():
             num_TP += class_counts_from_cm(cm, level)['TP']
 
@@ -116,14 +115,17 @@ def parse_JSON_for_pred(data, y_ground, json, eval=None):
 
 
 # Main
-if (len(sys.argv) == 3):
-    test_set_path = sys.argv[1]
-    tree_data = sys.argv[2]
-else:
+test_set_path = sys.argv[1]
+tree_path = sys.argv[2]
+print("Reading JSON from " + tree_path)
+if (len(sys.argv) >= 4):
     out_file = sys.argv[3]
+    print("Writing to " + out_file)
 
-json_data = read_json(tree_data)
-test_set = pd.read_csv(test_set_path, skiprows=2)
+with open(tree_path, 'r') as tree_file:
+    json_data = json.load(tree_file)
+test_set = pd.read_csv(test_set_path, skiprows=[1,2])
+# print(json_data.dumps(indent=4))
 
 if "iris" in test_set_path:
     ground_truth = test_set['species']
@@ -132,6 +134,7 @@ elif "nursery" in test_set_path:
 else:
     ground_truth = test_set['lettr']
 
-parsed_data = parse_JSON_for_pred(json_data, ground_truth,  json_data)
+parsed_data = parse_JSON_for_pred(test_set.to_dict(orient="records"), ground_truth,  json_data)
 
-# print to file? output?
+if (len(sys.argv) >= 3):
+    pprint(parsed_data)
