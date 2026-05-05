@@ -50,6 +50,9 @@ class c45:
         if best_attr is None or best_score < self.threshold:
             return self._leaf(y)
 
+        if self.feature_types[best_attr] == "numeric" and best_split is None:
+            return self._leaf(y)
+        
         node = {
             "var": best_attr,
             "edges": []
@@ -250,3 +253,30 @@ class c45:
         return node["leaf"]["decision"]
 
 
+def load_lab_csv(filename):
+    import pandas as pd
+
+    with open(filename, "r") as f:
+        header = f.readline().strip().split(",")
+        type_codes = [int(x) for x in f.readline().strip().split(",")]
+        class_name = f.readline().strip()
+
+    df = pd.read_csv(filename, skiprows=3, names=header)
+
+    # Drop row ID / metadata columns marked -1
+    keep_cols = [col for col, code in zip(header, type_codes) if code != -1]
+    df = df[keep_cols]
+
+    y = df[class_name]
+    X = df.drop(columns=[class_name])
+
+    feature_types = {}
+    for col, code in zip(header, type_codes):
+        if col in X.columns:
+            if code == 0:
+                feature_types[col] = "numeric"
+                X[col] = pd.to_numeric(X[col], errors="coerce")
+            elif code > 0:
+                feature_types[col] = "categorical"
+
+    return X, y, feature_types
