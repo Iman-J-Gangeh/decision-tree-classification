@@ -11,7 +11,7 @@ def main():
     X, y, feature_types = clean_csv(csv)
 
     model = c45(metric="InfoGain", threshold=0.05)
-    tree = model.fit(X, y, feature_types=feature_types, dataset=csv)
+    tree = model.fit(X, y, feature_types=feature_types, df=csv)
 
     print(json.dumps(tree, indent=2))
 

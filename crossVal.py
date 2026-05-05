@@ -183,7 +183,7 @@ def class_counts_from_cm(cm, cls):
 
 def test_tree(x, y, x_test, metric, threshold, feature_types):
     model = c45(metric=metric, threshold=threshold)
-    model.fit(X=x, y=pd.Series(y["y"]), feature_types=feature_types, dataset=DATASET)
+    model.fit(X=x, y=pd.Series(y["y"]), feature_types=feature_types, df=DATASET)
 
     majority_class = pd.Series(y["y"]).mode().iloc[0]
     y_pred = predict_with_model(model, x_test)
@@ -269,6 +269,6 @@ print(best_model["CM"])
 
 if out_file is not None:
     final_model = c45(metric=best_model["Splitting Metric"], threshold=float(best_model["Threshold"]))
-    final_model.fit(X=X, y=y, feature_types=feature_types, dataset=DATASET)
+    final_model.fit(X=X, y=y, feature_types=feature_types, df=DATASET)
     final_model.save_tree(out_file)
     print("Saved best-model tree to", out_file)

@@ -1,0 +1,133 @@
+{
+  "dataset": "iris.csv",
+  "node": {
+    "var": "petalLength",
+    "edges": [
+      {
+        "edge": {
+          "value": 2.45,
+          "op": "<=",
+          "leaf": {
+            "decision": "Iris-setosa",
+            "p": 1.0
+          }
+        }
+      },
+      {
+        "edge": {
+          "value": 2.45,
+          "op": ">",
+          "node": {
+            "var": "petalWidth",
+            "edges": [
+              {
+                "edge": {
+                  "value": 1.75,
+                  "op": "<=",
+                  "node": {
+                    "var": "sepalLength",
+                    "edges": [
+                      {
+                        "edge": {
+                          "value": 7.1,
+                          "op": "<=",
+                          "node": {
+                            "var": "sepalWidth",
+                            "edges": [
+                              {
+                                "edge": {
+                                  "value": 2.8499999999999996,
+                                  "op": "<=",
+                                  "leaf": {
+                                    "decision": "Iris-versicolor",
+                                    "p": 0.871
+                                  }
+                                }
+                              },
+                              {
+                                "edge": {
+                                  "value": 2.8499999999999996,
+                                  "op": ">",
+                                  "leaf": {
+                                    "decision": "Iris-versicolor",
+                                    "p": 1.0
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "edge": {
+                          "value": 7.1,
+                          "op": ">",
+                          "leaf": {
+                            "decision": "Iris-virginica",
+                            "p": 1.0
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "edge": {
+                  "value": 1.75,
+                  "op": ">",
+                  "node": {
+                    "var": "sepalLength",
+                    "edges": [
+                      {
+                        "edge": {
+                          "value": 5.95,
+                          "op": "<=",
+                          "node": {
+                            "var": "sepalWidth",
+                            "edges": [
+                              {
+                                "edge": {
+                                  "value": 3.1,
+                                  "op": "<=",
+                                  "leaf": {
+                                    "decision": "Iris-virginica",
+                                    "p": 1.0
+                                  }
+                                }
+                              },
+                              {
+                                "edge": {
+                                  "value": 3.1,
+                                  "op": ">",
+                                  "leaf": {
+                                    "decision": "Iris-versicolor",
+                                    "p": 1.0
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      {
+                        "edge": {
+                          "value": 5.95,
+                          "op": ">",
+                          "leaf": {
+                            "decision": "Iris-virginica",
+                            "p": 1.0
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
