@@ -134,10 +134,10 @@ def CV_10fold(data: pd.DataFrame):
     data = data.sample(frac=1, random_state=1).reset_index(drop=True)
     split_indices = np.array_split(data.index.to_numpy(), 10)
 
-    for i in range(10):
-        split = data.iloc[ (i * split_index) : ((i + 1) * split_index) ]
-        fold_array.append( pd.DataFrame(split.drop(columns=['y']), columns=keys) )
-        fold_y.append( pd.DataFrame(split['y'], columns=['y']) )
+    for idx in split_indices:
+        split = data.loc[idx].reset_index(drop=True)
+        fold_array.append(pd.DataFrame(split.drop(columns=["y"]), columns=keys))
+        fold_y.append(pd.DataFrame(split["y"], columns=["y"]))
 
     return {"data": fold_array, "ground": fold_y}
 
