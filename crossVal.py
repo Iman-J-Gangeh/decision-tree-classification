@@ -144,14 +144,23 @@ def CV_10fold(data: pd.DataFrame):
 
 
 def confusion_matrix_multiclass(y_true, y_pred, labels=None):
-    y_true = pd.Series(y_true)
-    y_pred = pd.Series(y_pred)
+    if isinstance(y_true, pd.DataFrame):
+        y_true = y_true.iloc[:, 0]
+    if isinstance(y_pred, pd.DataFrame):
+        y_pred = y_pred.iloc[:, 0]
+
+    y_true = pd.Series(list(y_true))
+    y_pred = pd.Series(list(y_pred))
 
     if len(y_true) != len(y_pred):
         raise ValueError("y_true and y_pred must have the same length")
 
     if labels is None:
-        labels = sorted(pd.Index(y_true).union(pd.Index(y_pred)).unique())
+        labels = list(pd.Index(y_true).union(pd.Index(y_pred)).unique())
+    else:
+        labels = list(labels)
+        extra_labels = [label for label in pd.Index(y_true).union(pd.Index(y_pred)).unique() if label not in labels]
+        labels = labels + extra_labels
 
     cm = pd.DataFrame(0, index=labels, columns=labels)
 
@@ -172,118 +181,94 @@ def class_counts_from_cm(cm, cls):
 
 
 
-def test_tree(x, y, x_test, metric, threshold):
+def test_tree(x, y, x_test, metric, threshold, feature_types):
     model = c45(metric=metric, threshold=threshold)
+    model.fit(X=x, y=pd.Series(y["y"]), feature_types=feature_types, dataset=DATASET)
 
-    model.fit(X=x, y=pd.Series(y['y']), dataset=DATASET)
-
-    y_pred = model.predict(x_test)
+    majority_class = pd.Series(y["y"]).mode().iloc[0]
+    y_pred = predict_with_model(model, x_test)
+    y_pred = [pred if pred is not None else majority_class for pred in y_pred]
     return y_pred
 
 
 
-def perform_GS(data, params, labels):
-    results = pd.DataFrame(columns=['Splitting Metric', 'Threshold', 'CV Accuracy', 'CM'])
-    x = list(data['data'])   # list of dataframes
-    y = list(data['ground'])
+def perform_GS(data, params, labels, feature_types):
+    results_list = []
+    x = list(data["data"])
+    y = list(data["ground"])
+    param_grid = normalize_param_grid(params)
 
-    IG = params['InfoGain']
-    R = params['Ratio']
-    Th = params['Threshold']
+    for setting in param_grid:
+        metric_name = setting["metric"]
+        threshold = setting["threshold"]
 
-    for threshhold in Th:
-        for g in IG:
-            accuracy_sum_g = 0
-            overall_cm_g = pd.DataFrame(0, index=labels, columns=labels)
-            for i in range(10):
-                x_train = pd.concat(x[-i:] + x[-(10 - (i + 1)):], axis=0)
-                y_train = pd.concat(y[-i:] + y[-(10 - (i + 1)):], axis=0)
-                x_test = x[i]
-                y_test = y[i]
+        overall_true = []
+        overall_pred = []
 
-                predictions = test_tree(x_train, y_train, x_test, metric=g, threshold=threshhold)
+        for i in range(10):
+            x_train = pd.concat(x[:i] + x[i + 1:], axis=0, ignore_index=True)
+            y_train = pd.concat(y[:i] + y[i + 1:], axis=0, ignore_index=True)
+            x_test = x[i].reset_index(drop=True)
+            y_test = y[i].reset_index(drop=True)
 
-                confusion_matrix = confusion_matrix_multiclass(y_test, predictions, labels)
+            predictions = test_tree(
+                x_train,
+                y_train,
+                x_test,
+                metric=metric_name,
+                threshold=threshold,
+                feature_types=feature_types,
+            )
 
-                overall_TP = confusion_matrix.diag().sum()
-                num_predictions = len(predictions)
+            overall_true.extend(y_test["y"].tolist())
+            overall_pred.extend(predictions)
 
-                accuracy_sum_g += overall_TP / num_predictions
-                overall_cm_g = overall_cm_g + confusion_matrix
+        overall_cm = confusion_matrix_multiclass(overall_true, overall_pred, labels)
+        num_predictions = len(overall_true)
+        num_correct = sum(1 for actual, predicted in zip(overall_true, overall_pred) if actual == predicted)
+        accuracy = num_correct / num_predictions if num_predictions > 0 else 0.0
 
-            avg_accuracy = accuracy_sum_g / 10
-            result = {
-                'Splitting Metric': g,
-                'Threshold': threshhold,
-                'CV Accuracy': avg_accuracy,
-                'CM': overall_cm_g
-            }
-            results = results.append(result)
-        for r in R:
-            accuracy_sum_r = 0
-            overall_cm_r = pd.DataFrame(0, index=labels, columns=labels)
-            for i in range(10):
-                x_train = pd.concat(x[-i:] + x[-(10 - (i + 1)):], axis=0)
-                y_train = pd.concat(y[-i:] + y[-(10 - (i + 1)):], axis=0)
-                x_test = x[i]
-                y_test = y[i]
+        result = {
+            "Splitting Metric": metric_name,
+            "Threshold": threshold,
+            "CV Accuracy": accuracy,
+            "CM": overall_cm,
+        }
+        results_list.append(result)
 
-                predictions = test_tree(x_train, y_train, x_test, metric=r, threshold=threshhold)
-
-                confusion_matrix = confusion_matrix_multiclass(y_test, predictions, labels)
-
-                overall_TP = confusion_matrix.diag().sum()
-                num_predictions = len(predictions)
-
-                accuracy_sum_r += overall_TP / num_predictions
-                overall_cm_r = overall_cm_r + confusion_matrix
-
-            avg_accuracy = accuracy_sum_r / 10
-            result = {
-                'Splitting Metric': r,
-                'Threshold': threshhold,
-                'CV Accuracy': avg_accuracy,
-                'CM': overall_cm_r
-            }
-            results = results.append(result)
-    return results.sort_values(by=['CV Accuracy'], ascending=False)
-
+    results = pd.DataFrame(results_list)
+    return results.sort_values(by=["CV Accuracy", "Splitting Metric", "Threshold"], ascending=[False, True, True]).reset_index(drop=True)
 
 
 # Main
 test_set_path = sys.argv[1]
 thresh_path = sys.argv[2]
-print("Reading JSON of hyperparams from " + thresh_path)
-if (len(sys.argv) > 3):
-    out_file = sys.argv[3]
-else:
-    out_file = None
+out_file = sys.argv[3] if len(sys.argv) > 3 else None
+DATASET = os.path.basename(test_set_path)
 
-with open(thresh_path, 'r') as params_file:
+print("Reading JSON of hyperparams from " + thresh_path)
+with open(thresh_path, "r") as params_file:
     params_json = json.load(params_file)
 
-test_set = pd.read_csv(test_set_path, skiprows=[1,2])
-if "iris" in test_set_path:
-    ground_truth = test_set['species']
-    test_set = test_set.drop('species', axis=1)
-    DATASET = "iris"
-elif "nursery" in test_set_path:
-    ground_truth = test_set['class']
-    test_set = test_set.drop('class', axis=1)
-    DATASET = "nursery"
-elif "letter" in test_set_path:
-    ground_truth = test_set['lettr']
-    test_set = test_set.drop('lettr', axis=1)
-    DATASET = "letter"
-else:
-    ground_truth = test_set['Inflated']
-    test_set = test_set.drop('Inflated', axis=1)
-    DATASET = "balloon"
+X, y, feature_types = load_lab_csv(test_set_path)
 
-test_set['y'] = ground_truth
-labels = test_set['y'].unique()
+test_set = X.copy().reset_index(drop=True)
+test_set["y"] = y.reset_index(drop=True)
+labels = list(pd.unique(test_set["y"]))
 
-folded = CV_10fold(test_set) # folded -> dict["data", "ground"]
-# pprint(params_json['InfoGain'])
-best_params = perform_GS(folded, params_json, labels)
-pprint(best_params)
+folded = CV_10fold(test_set)
+best_params = perform_GS(folded, params_json, labels, feature_types)
+
+best_model = best_params.iloc[0]
+print("Best Decision Tree Model")
+print("Splitting Metric:", best_model["Splitting Metric"])
+print("Threshold:", best_model["Threshold"])
+print("Overall CV Accuracy:", best_model["CV Accuracy"])
+print("Overall CV Confusion Matrix:")
+print(best_model["CM"])
+
+if out_file is not None:
+    final_model = c45(metric=best_model["Splitting Metric"], threshold=float(best_model["Threshold"]))
+    final_model.fit(X=X, y=y, feature_types=feature_types, dataset=DATASET)
+    final_model.save_tree(out_file)
+    print("Saved best-model tree to", out_file)
