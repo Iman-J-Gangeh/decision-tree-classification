@@ -11,15 +11,15 @@ class c45:
         self.tree = None
         self.feature_types = {}
         self.class_name = None
-        self.dataset = None
+        self.df = None
 
-    def fit(self, X, y, feature_types=None, dataset=None):
-        self.dataset = dataset
+    def fit(self, X, y, feature_types=None, df=None):
+        self.df = df
         self.class_name = y.name if y.name else "class"
         self.feature_types = feature_types or {col: "categorical" for col in X.columns}
 
         self.tree = {
-            "dataset": dataset,
+            "dataset": df,
             "node": self._build_tree(X, y, list(X.columns))
         }
         return self.tree
@@ -250,34 +250,3 @@ class c45:
         return node["leaf"]["decision"]
 
 
-def load_lab_csv(filename):
-    with open(filename, "r") as f:
-        names = f.readline().strip().split(",")
-        domains = [int(x) for x in f.readline().strip().split(",")]
-        class_name = f.readline().strip()
-
-    df = pd.read_csv(filename, skiprows=[1, 2])
-
-    row_id_cols = [
-        names[i]
-        for i, domain in enumerate(domains)
-        if domain == -1
-    ]
-
-    df = df.drop(columns=row_id_cols, errors="ignore")
-    df = df.dropna()
-
-    y = df[class_name]
-    X = df.drop(columns=[class_name])
-
-    feature_types = {}
-
-    for col in X.columns:
-        idx = names.index(col)
-        if domains[idx] == 0:
-            feature_types[col] = "numeric"
-            X[col] = pd.to_numeric(X[col])
-        else:
-            feature_types[col] = "categorical"
-
-    return X, y, feature_types
