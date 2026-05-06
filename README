@@ -1,0 +1,43 @@
+# CSC 466 Lab 2 – Decision Tree Classification
+
+* Chloe Olivas
+    Email: cholivas@calpoly.edu
+* Iman Jabbarzadeh Gangeh
+  Email: ijabbarz@calpoly.edu
+
+## How to Run
+
+### 1. Train a Decision Tree
+
+```bash
+python InduceC45.py <dataset.csv> <output.json>
+```
+
+### 2. Make Predictions
+
+```bash
+python predict.py <dataset.csv> <tree.json> [eval]
+```
+
+---
+
+### 3. Run Cross-Validation (Our Implementation)
+
+```bash
+python crossVal.py <dataset.csv> <params.json> [output_tree.json]
+```
+
+
+### 4. Run Cross-Validation (Scikit-learn)
+
+```bash
+python crossValSKL.py <dataset.csv> <params.json> <output_image.png>
+```
+
+## Dependencies
+
+
+```bash
+python -m pip install numpy pandas scikit-learn matplotlib
+```
+
